@@ -11,7 +11,7 @@ output:
 knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, fig.align = "center")
 ```
 
-## Drug Synergy Analysis - The Thymoglobulin Edition
+## Drug Synergy Analysis
 
 **Version 2.3**
 *Updated on:* 10/08/2021
@@ -80,8 +80,8 @@ createMyFolders()
 ```
 
 ```{r Data Loading}
-#drugSynergyData <- read.csv2(file.choose(), header = TRUE)
-drugSynergyData <- read.csv(file = "data/dataset.csv", header = TRUE)
+drugSynergyData <- read.csv2(file.choose(), header = TRUE)
+
 drugSynergyData$sample <- as.factor(drugSynergyData$sample)
 ```
 
