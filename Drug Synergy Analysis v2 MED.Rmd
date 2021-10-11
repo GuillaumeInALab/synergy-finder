@@ -1,0 +1,187 @@
+---
+title: "Drug Synergy Analysis for MED"
+author: "Marie-Emilie Dourthe & Guillaume P. Andrieu"
+date: "10/7/2021"
+output:
+  pdf_document:
+  html_document:
+---
+
+```{r setup, include=FALSE,}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, fig.align = "center")
+```
+
+## Drug Synergy Analysis - The Thymoglobulin Edition
+
+**Version 2.3**
+*Updated on:* 10/08/2021
+
+**R version**: `r R.version.string`
+**Bioconductor version**: `r BiocManager::version()`
+**Packages**:
+- synergyfinder: `r packageVersion("synergyfinder")`
+
+***
+
+
+This script uses the *syngeryfinder* package. For more details see the vignette: <https://bioconductor.org/packages/release/bioc/manuals/synergyfinder/man/synergyfinder.pdf>.
+
+***
+
+```{r libraries, results='hide'}
+if(!require(needs)){
+  install.packages("needs")}
+library(needs)
+
+if(!require("synergyfinder"))
+{ BiocManager::install("synergyfinder") }
+
+needs("tidyverse", "synergyfinder", "ggpubr")
+```
+
+```{r custom functions, include = FALSE}
+createMyFolders <- function(){
+  dir.create("data", showWarnings = FALSE)
+  dir.create("results", showWarnings = FALSE)
+}
+
+subsetData <- function(data, sampleID) {
+  subset(data, sample == sampleID)[,]
+}
+
+imputeIntermediateDose <- function(drugComboData){
+  idx <- nlevels(as.factor(drugComboData$conc_r))
+  
+  df <- drugComboData[1:idx,]
+  df$conc_c <- mean(as.numeric(levels(as.factor(drugComboData$conc_c))))
+  
+  for (k in 1:nrow(df)){
+    df$response[k] <- (drugComboData$response[k] + drugComboData$response[k+idx])/2
+  }
+  
+  drugComboData <- rbind(drugComboData, df)
+  
+  return(drugComboData)
+}
+```
+
+```{r set class Sample}
+setClass(Class = "Sample",
+         representation(
+           id = "character",
+           date = "integer",
+           drug1 = "character",
+           drug2 = "character"))
+```
+
+
+```{r create folders}
+createMyFolders()
+```
+
+```{r Data Loading}
+#drugSynergyData <- read.csv2(file.choose(), header = TRUE)
+drugSynergyData <- read.csv(file = "data/dataset.csv", header = TRUE)
+drugSynergyData$sample <- as.factor(drugSynergyData$sample)
+```
+
+```{r Dose-Response Matrix Computing, results='hide', comment=FALSE}
+for (i in levels(drugSynergyData$sample)){
+
+  sample = new("Sample", 
+             id = i,
+             date = drugSynergyData$date[drugSynergyData$sample == i][[1]])
+
+  drugComboDF <- subsetData(drugSynergyData, sample@id)
+  
+  drugComboDF$block_id <- as.factor(drugComboDF$block_id)
+  drugComboData <- drugComboDF[,!(names(drugComboDF) %in% c("sample","date"))]
+
+
+###########
+#ATTENTION : A EXECUTER SEULEMENT SI LA DROGUE 1 A ETE TESTEE EN DOSE UNIQUE
+  
+   drugComboData <- imputeIntermediateDose(drugComboData)
+  
+########### 
+  
+  for (j in levels(drugComboData$block_id)) {
+    
+    blockIDData <- drugComboData[drugComboData$block_id == j, ]
+    
+    sample@drug1 = drugSynergyData$drug_col[drugSynergyData$block_id == j][[1]]
+    sample@drug2 = drugSynergyData$drug_row[drugSynergyData$block_id == j][[1]]
+    
+    folderName <- paste0(sample@id,"_", sample@date)
+    folderDir <- paste0("results/", folderName)
+    dir.create(folderDir)
+    
+    subFolderName <- paste0(folderDir,"/", sample@drug1, "+", sample@drug2)
+    dir.create(subFolderName)
+
+    results <- ReshapeData(data = blockIDData,
+                                      data_type = "viability",
+                                      impute = TRUE,
+                                      noise = TRUE,
+                                      seed = 2)
+    
+    results <- CalculateSynergy(data = results, 
+                                method = c("ZIP", "Loewe", "Bliss"),
+                                Emin = 0,
+                                Emax = 100,
+                                iteration = 10,
+                                correct_baseline = "non")
+    
+    doseResponse <- PlotDoseResponse(data = results,
+                                     adjusted = TRUE,
+                                     summary_statistic = "mean",
+                                     curve_plot_title = paste0(sample@id,"-", sample@drug1, "+", sample@drug2))
+    
+    
+    synergyPlot2D_ZIP <- PlotSynergy(data = results,
+                                     type = "2D",
+                                     method = "ZIP",
+                                     plot_title = paste0(sample@id, "-ZIP"))
+    
+    synergyPlot2D_Loewe <- PlotSynergy(data = results,
+                                     type = "2D",
+                                     method = "Loewe",
+                                     plot_title = paste0(sample@id, "-Loewe"))
+    
+    synergyPlot2D_Bliss <- PlotSynergy(data = results,
+                                     type = "2D",
+                                     method = "Bliss",
+                                     plot_title = paste0(sample@id, "-Bliss"))
+    
+    synergyPlot3D_ZIP <- PlotSynergy(data = results,
+                                     type = "3D",
+                                     method = "ZIP",
+                                     plot_title = paste0(sample@id, "-ZIP"))
+    
+    synergyPlot3D_Loewe <- PlotSynergy(data = results,
+                                     type = "3D",
+                                     method = "Loewe",
+                                     plot_title = paste0(sample@id, "-Loewe"))
+    
+    synergyPlot3D_Bliss <- PlotSynergy(data = results,
+                                     type = "3D",
+                                     method = "Bliss",
+                                     plot_title = paste0(sample@id, "-Bliss"))
+    
+    pdf(file = paste0(subFolderName,"/Response Matrix and Synergy Scores.pdf"))
+    
+    print(doseResponse)
+    print(synergyPlot2D_ZIP)
+    print(synergyPlot2D_Loewe)
+    print(synergyPlot2D_Bliss)
+    print(synergyPlot3D_ZIP)
+    print(synergyPlot3D_Loewe)
+    print(synergyPlot3D_Bliss)    
+
+    dev.off()
+  
+  write.csv(x = as.data.frame(results$synergy_scores),
+            file = paste0(subFolderName,"/Synergy Scores.csv"))
+  }
+}
+```
