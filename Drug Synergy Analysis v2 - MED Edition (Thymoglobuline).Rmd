@@ -134,37 +134,44 @@ for (i in levels(drugSynergyData$sample)){
     
     doseResponse <- PlotDoseResponse(data = results,
                                      adjusted = TRUE,
+                                     block_ids = j,
                                      summary_statistic = "mean",
                                      curve_plot_title = paste0(sample@id,"-", sample@drug1, "+", sample@drug2))
     
     
     synergyPlot2D_ZIP <- PlotSynergy(data = results,
                                      type = "2D",
+                                     block_ids = j,
                                      method = "ZIP",
                                      plot_title = paste0(sample@id, "-ZIP"))
     
     synergyPlot2D_Loewe <- PlotSynergy(data = results,
                                      type = "2D",
+                                     block_ids = j,
                                      method = "Loewe",
                                      plot_title = paste0(sample@id, "-Loewe"))
     
     synergyPlot2D_Bliss <- PlotSynergy(data = results,
                                      type = "2D",
+                                     block_ids = j,
                                      method = "Bliss",
                                      plot_title = paste0(sample@id, "-Bliss"))
     
     synergyPlot3D_ZIP <- PlotSynergy(data = results,
                                      type = "3D",
+                                     block_ids = j,
                                      method = "ZIP",
                                      plot_title = paste0(sample@id, "-ZIP"))
     
     synergyPlot3D_Loewe <- PlotSynergy(data = results,
                                      type = "3D",
+                                     block_ids = j,
                                      method = "Loewe",
                                      plot_title = paste0(sample@id, "-Loewe"))
     
     synergyPlot3D_Bliss <- PlotSynergy(data = results,
                                      type = "3D",
+                                     block_ids = j,
                                      method = "Bliss",
                                      plot_title = paste0(sample@id, "-Bliss"))
     
